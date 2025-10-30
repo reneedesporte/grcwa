@@ -11,8 +11,8 @@ class obj:
     ----------
     freq : float
         Frequency of incident light source.
-    omega : float
-        Angular frequency of incidence light source.
+    omega : complex
+        Angular frequency of incidence light source. TODO: verify.
     L1 : list
         Lattice vector for the x-axis. TODO: elaborate.
     L2 : list
@@ -39,7 +39,7 @@ class obj:
          is set in each of the `Add_Layer` methods: `Add_LayerUniform`,
          `Add_LayerGrid`, `Add_LayerFourier`.
     kp_list : list
-        TODO
+        List of values generated with `MakeKPMatrix`. TODO: elaborate.
     q_list : list
         Eigenvalues. TODO: elaborate.
     phi_list : list
@@ -224,7 +224,7 @@ class obj:
 
     def Init_Setup(self, Pscale: float = 1.0, Gmethod: int = 0) -> None:
         """
-        Finalize simulation setup.
+        Set up simulation.
 
         Set up recipricol lattice, compute eigenvalues for uniform layers,
         and initialize vectors for patterned layers.
@@ -449,8 +449,8 @@ class obj:
         Parameters
         ----------
         normalize : int, default=0
-            Normalization setting. If 1, normalization R and T
-            by the normalization factor.
+            Normalization setting. If 1, normalize R and T
+            by the `normalization` factor.
         byorder : int, default=0
             TODO
 
@@ -727,10 +727,33 @@ class obj:
             eh = eh[0]
         return eh
 
-    def Volume_integral(self, which_layer, Mx, My, Mz, normalize=0):
-        """Mxyz is convolution matrix.
-        This function computes 1/A\int_V Mx|Ex|^2+My|Ey|^2+Mz|Ez|^2
-        To be consistent with Poynting vector defintion here, the absorbed power will be just omega*output
+    def Volume_integral(
+        self, which_layer: int, Mx, My, Mz, normalize: int = 0
+    ):  # TODO: Add return types
+        """
+        Get volume integration with respect to some convolution matrix.
+
+        This function computes 1/A\int_V Mx|Ex|^2+My|Ey|^2+Mz|Ez|^2 (<-- TODO: format this formula).
+        To be consistent with Poynting vector defintion here, the absorbed power will be just `omega * output`.
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+        Mx : numpy.ndarray
+            TODO
+        My : numpy.ndarray
+            TODO
+        Mz : numpy.ndarray
+            TODO
+        normalize : int, default=0
+            Normalization setting. If 1, normalize volume integration
+            by the `normalization` factor.
+
+        Returns
+        -------
+        numpy.ndarray
+            The volume integration with respect the provided convolution matrix.
         """
         kp = self.kp_list[which_layer]
         q = self.q_list[which_layer]
@@ -786,9 +809,20 @@ class obj:
             val = val * self.normalization
         return val
 
-    def Solve_ZStressTensorIntegral(self, which_layer):
+    def Solve_ZStressTensorIntegral(self, which_layer: int) -> tuple:
         """
-        returns 2F_x,2F_y,2F_z, integrated over z-plane
+        Solve for the Maxwell stress tensor, integrated over the z-plane.
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+
+        Returns
+        -------
+        `tuple` of `numpy.ndarray`s
+            `(2F_x, 2F_y, 2F_z)`, the Maxwell stress tensor, integrated
+            over z-plane.
         """
         z_offset = 0.0
         eh = self.Solve_FieldFourier(which_layer, z_offset)
@@ -834,7 +868,26 @@ class obj:
         return Tx, Ty, Tz
 
 
-def MakeKPMatrix(omega, layer_type, epinv, kx, ky):
+def MakeKPMatrix(omega, layer_type: int, epinv, kx, ky):  # TODO: Add return types
+    """
+    TODO
+
+    Parameters
+    ----------
+    layer_type : int
+        Layer type: "type" = 0 for uniform layers, 1 for grid layers, and
+        2 for Fourier layers.
+    epinv : numpy.ndarray
+        TODO
+    kx : numpy.ndarray
+        TODO
+    ky : numpy.ndarray
+        TODO
+
+    Returns
+    -------
+    TODO
+    """
     nG = len(kx)
 
     # uniform layer, epinv has length 1
@@ -855,7 +908,27 @@ def MakeKPMatrix(omega, layer_type, epinv, kx, ky):
     return kp
 
 
-def SolveLayerEigensystem_uniform(omega, kx, ky, epsilon):
+def SolveLayerEigensystem_uniform(
+    omega: complex, kx, ky, epsilon
+):  # TODO: Add return types
+    """
+    Solve Eigen system for uniform layers.
+
+    Parameters
+    ----------
+    omega : complex
+        Angular frequency of incidence light source. TODO: verify.
+    kx : numpy.ndarray
+        TODO
+    ky : numpy.ndarray
+        TODO
+    epsilon : TODO
+        TODO
+
+    Returns
+    -------
+    Eigenvalues and eigenvectors. TODO: types.
+    """
     nG = len(kx)
     q = bd.sqrt(epsilon * omega**2 - kx**2 - ky**2)
     # branch cut choice
@@ -866,7 +939,25 @@ def SolveLayerEigensystem_uniform(omega, kx, ky, epsilon):
     return q, phi
 
 
-def SolveLayerEigensystem(omega, kx, ky, kp, ep2):
+def SolveLayerEigensystem(omega: complex, kx, ky, kp, ep2):  # TODO: Add return types
+    """
+    Solve Eigen system for pattern layers.
+
+    Parameters
+    ----------
+    omega : complex
+        Angular frequency of incidence light source. TODO: verify.
+    kx : numpy.ndarray
+        TODO
+    ky : numpy.ndarray
+        TODO
+    ep2 : TODO
+        TODO
+
+    Returns
+    -------
+    Eigenvalues and eigenvectors. TODO: types.
+    """
     nG = len(kx)
 
     k = bd.vstack((bd.diag(kx), bd.diag(ky)))
@@ -881,8 +972,44 @@ def SolveLayerEigensystem(omega, kx, ky, kp, ep2):
     return q, phi
 
 
-def GetSMatrix(indi, indj, q_list, phi_list, kp_list, thickness_list):
-    """S_ij: size 4n*4n"""
+def GetSMatrix(
+    indi: int,
+    indj: int,
+    q_list: list,
+    phi_list: list,
+    kp_list: list,
+    thickness_list: list,
+):  # TODO: Add return types
+    """
+    Compute S matrix. TODO: elaborate.
+
+    S_ij: size 4n*4n
+
+    Parameters
+    ----------
+    indi : int
+        TODO
+    indj : int
+        TODO
+    q_list : list
+        Eigenvalues. TODO: elaborate.
+    phi_list : list
+        Eigenvectors. TODO: elaborate.
+    kp_list : list
+        List of values generated with `obj.MakeKPMatrix`.
+        TODO: elaborate.
+    thickness_list : list
+        A list representing the thickness of each layer in device.
+
+    Returns
+    -------
+    TODO
+
+    Raises
+    ------
+    Exception
+        If `indi > indj`.
+    """
     # assert type(indi) == int, 'layer index i must be integar'
     # assert type(indj) == int, 'layer index j must be integar'
 
@@ -1017,7 +1144,9 @@ def GetZPoyntingFlux(ai, bi, omega, kp, phi, q, byorder=0):
 
 
 def Matrix_zintegral(q, thickness, shift=1e-12):
-    """Generate matrix for z-integral"""
+    """
+    Helper function to generate matrix for z-integral.
+    """
     nG2 = len(q)
     qi, qj = Gmeshgrid(q)
 
