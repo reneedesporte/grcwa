@@ -4,17 +4,115 @@ from .kbloch import Lattice_Reciprocate, Lattice_getG, Lattice_SetKs
 
 
 class obj:
-    def __init__(self, nG, L1, L2, freq, theta, phi, verbose=1):
-        """The time harmonic convention is exp(-i omega t), speed of light = 1
+    """
+    Main GRCWA object class.
+
+    Attributes
+    ----------
+    freq : float
+        Frequency of incident light source.
+    omega : float
+        Angular frequency of incidence light source.
+    L1 : list
+        Lattice vector for the x-axis. TODO: elaborate.
+    L2 : list
+        Lattice vector for the y-axis. TODO: elaborate.
+    phi : float
+        The azimuthal angle of incident light, in radians.
+    theta : float
+        The polar angle of incident light, in radians.
+    nG : int
+        The truncation order of simulation. TODO: elaborate.
+    verbose : int
+        Verbosity setting. If greater than 0, verbose output
+         will be provided.
+    Layer_N : int
+        Total number of layers in device.
+    thickness_list : list
+        A list of length `Layer_N` representing the thickness
+         of each layer in device.
+    id_list : list
+        A list that tracks all layers in the device. The following
+         format is used: ["type", "No.", "No. in patterned/uniform",
+         "No. in its family"]. "type" = 0 for uniform layers, 1
+         for grid layers, and 2 for Fourier layers. This attibute
+         is set in each of the `Add_Layer` methods: `Add_LayerUniform`,
+         `Add_LayerGrid`, `Add_LayerFourier`.
+    kp_list : list
+        TODO
+    q_list : list
+        Eigenvalues. TODO: elaborate.
+    phi_list : list
+        Eigenvectors. TODO: elaborate.
+    Uniform_ep_list : list
+        The list of dielectrics for each uniform layer, set incrementally
+         in `Add_LayerUniform`.
+    Uniform_N : int
+        Total number of uniform layers, incremented in `Add_LayerUniform`.
+    Patterned_N : int
+        Total number of patterned layers, incremented in `Add_LayerGrid`
+         and `Add_LayerFourier`.
+    Patterned_epinv_list : list
+        TODO
+    Patterned_ep2_list : list
+        TODO
+    GridLayer_N : int
+        Total number of _grid_ patterned layers, incremented in
+         `Add_LayerGrid`.
+    GridLayer_Nxy_list : list
+        List of number of points in the x and y axes for each grid layer,
+         set incrementally in `Add_LayerGrid`.
+         TODO: verify correctness of this description.
+    FourierLayer_N : int
+        Total number of analytic Fourier series, incremented in
+         `Add_LayerFourier`.
+    FourierLayer_params : list
+        List of Fourier parameters for each Fourier layer, set
+         incrementally in `Add_LayerFourier`.
+    """
+
+    def __init__(
+        self,
+        nG: int,
+        L1: list,
+        L2: list,
+        freq: float,
+        theta: float,
+        phi: float,
+        verbose=1,
+    ) -> None:
+        """
+        Initialize the main GRCWA object.
+
+        Parameters
+        ----------
+        nG : int
+            The truncation order of simulation.
+        L1 : list
+            Lattice vector for the x-axis. TODO: elaborate.
+        L2 : list
+            Lattice vector for the y-axis. TODO: elaborate.
+        freq : float
+            Frequency of incident light source.
+        theta : float
+            The polar angle of incident light, in radians.
+        phi : float
+            The azimuthal angle of incident light, in radians.
+        verbose : int, default=1
+            Verbosity setting. If greater than 0, verbose output
+             will be provided.
+
+        Notes
+        -----
+        The time harmonic convention is exp(-i omega t), speed of light = 1
 
         Two kinds of layers are currently supported: uniform layer,
         patterned layer from grids. Interface for patterned layer by
         direct analytic expression of Fourier series is included, but
         no examples inclded so far.
 
-        nG: truncation order, but the actual truncation order might not be nG
-        L1,L2: lattice vectors, in the list format, (x,y)
-
+        nG: truncation order, but the actual truncation order might not be nG.
+        TODO: elaborate on the sentence above.
         """
         self.freq = freq
         self.omega = 2 * bd.pi * freq + 0.0j
@@ -52,7 +150,21 @@ class obj:
         self.FourierLayer_N = 0
         self.FourierLayer_params = []
 
-    def Add_LayerUniform(self, thickness, epsilon):
+    def Add_LayerUniform(self, thickness: float, epsilon: float) -> None:
+        """
+        Add a uniform layer to the simulation.
+
+        Parameters
+        ----------
+        thickness : float
+            Thickness of the layer, in microns.
+        Epsilon
+            Dielectric of uniform layer.
+
+        Returns
+        -------
+        None
+        """
         # assert type(thickness) == float, 'thickness should be a float'
 
         self.id_list.append([0, self.Layer_N, self.Uniform_N])
@@ -62,7 +174,23 @@ class obj:
         self.Layer_N += 1
         self.Uniform_N += 1
 
-    def Add_LayerGrid(self, thickness, Nx, Ny):
+    def Add_LayerGrid(self, thickness: float, Nx: int, Ny: int) -> None:
+        """
+        Add a grid layer to the simulation.
+
+        Parameters
+        ----------
+        thickness : float
+            Thickness of the layer, in microns.
+        Nx : int
+            Number of points in grid along x-axis.
+        Ny : int
+            Number of points in grid along y-axis.
+
+        Returns
+        -------
+        None
+        """
         self.thickness_list.append(thickness)
         self.GridLayer_Nxy_list.append([Nx, Ny])
         self.id_list.append([1, self.Layer_N, self.Patterned_N, self.GridLayer_N])
@@ -71,7 +199,21 @@ class obj:
         self.GridLayer_N += 1
         self.Patterned_N += 1
 
-    def Add_LayerFourier(self, thickness, params):
+    def Add_LayerFourier(self, thickness: float, params) -> None:
+        """
+        Add an analytic Fourier series layer, e.g., a circle, to the simulation.
+
+        Parameters
+        ----------
+        thickness : float
+            Thickness in microns.
+        params
+            TODO
+
+        Returns
+        -------
+        None
+        """
         self.thickness_list.append(thickness)
         self.FourierLayer_params.append(params)
         self.id_list.append([2, self.Layer_N, self.Patterned_N, self.FourierLayer_N])
@@ -80,12 +222,25 @@ class obj:
         self.Patterned_N += 1
         self.FourierLayer_N += 1
 
-    def Init_Setup(self, Pscale=1.0, Gmethod=0):
+    def Init_Setup(self, Pscale: float = 1.0, Gmethod: int = 0) -> None:
         """
-        Set up reciprocal lattice (Gmethod:truncation scheme, 0 for circular, 1 for rectangular)
-        Pscale: scale the period
-        Compute eigenvalues for uniform layers
-        Initialize vectors for patterned layers
+        Finalize simulation setup.
+
+        Set up recipricol lattice, compute eigenvalues for uniform layers,
+        and initialize vectors for patterned layers.
+
+        Parameters
+        ----------
+        Pscale : float, default=1
+            Scale factor of device period. TODO: elaborate, e.g.,
+             lattices are _divided_ by this factor.
+        Gmethod : int
+            Truncation scheme: 0 for cicular, 1 for rectangular.
+             See also `kbloch.Lattice_getG`.
+
+        Returns
+        -------
+        None
         """
         kx0 = (
             self.omega
@@ -134,10 +289,39 @@ class obj:
                 self.phi_list.append(None)
 
     def MakeExcitationPlanewave(
-        self, p_amp, p_phase, s_amp, s_phase, order=0, direction="forward"
-    ):
+        self,
+        p_amp: float,
+        p_phase: float,
+        s_amp: float,
+        s_phase: float,
+        order: int = 0,
+        direction: str = "forward",
+    ) -> None:
         """
-        Front incidence
+        Set up incident light source.
+
+        Parameters
+        ----------
+        p_amp : float
+            Amplitude of p-polarization.
+        p_phase : float
+            Phase of p-polarization, in radians. TODO: confirm units.
+        s_amp : float
+            Amplitude of s-polarization.
+        s_phase : float
+            Phase of s-polarization, in radians. TODO: confirm units.
+        order : int, default=0
+            TODO
+        direction : str, default="forward"
+            Direction of incident light.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        [The basics of polarized light](https://www.edmundoptics.com/knowledge-center/application-notes/optics/introduction-to-polarization/?srsltid=AfmBOop5Vqjb98ETcwS_-ZuK324C-tS63LKhRt6qD9Qnf_nXZAWP5X7R)
         """
         self.direction = direction
         theta = self.theta
@@ -176,9 +360,20 @@ class obj:
         self.a0 = a0
         self.bN = bN
 
-    def GridLayer_geteps(self, ep_all):
+    def GridLayer_geteps(self, ep_all) -> None:
         """
-        Fourier transform + eigenvalue for grid layer
+        Feed the epsilon profile to patterned layers via Fourier transform +
+        eigenvalue for grid layer.
+
+        Parameters
+        ----------
+        ep_all : numpy.ndarray
+            A 1D array representing the epsilon profile for patterned layers,
+            e.g., `np.concatenate((epgrid1.flatten(),epgrid2.flatten(),...))`
+
+        Returns
+        -------
+        None
         """
         ptri = 0
         ptr = 0
@@ -214,8 +409,11 @@ class obj:
             ptr += Nx * Ny
             ptri += 1
 
-    def Return_eps(self, which_layer, Nx, Ny, component="xx"):
+    def Return_eps(
+        self, which_layer: int, Nx: int, Ny: int, component: str = "xx"
+    ):  # TODO: add return types
         """
+        TODO
         For patterned layer component = 'xx','xy','yx','yy','zz'
         For uniform layer, currently it's assumed to be isotropic
         """
@@ -240,13 +438,28 @@ class obj:
 
             return get_ifft(Nx, Ny, epk[0, :], self.G)
 
-    def RT_Solve(self, normalize=0, byorder=0):
+    def RT_Solve(self, normalize=0, byorder=0):  # TODO: Add return types
         """
-        Reflection and transmission power computation
-        Returns 2R and 2T, following Victor's notation
-        Maybe because 2* makes S_z = 1 for H=1 in vacuum
+        Compute reflection and transmission power.
 
-        if normalize = 1, it will be divided by n[0]*cos(theta)
+        Returns 2R and 2T, following Victor's notation, which may be because 2* makes
+        `S_z = 1` for `H = 1` in vacuum. If normalize = 1, it will be divided by
+        `n[0] * cos(theta)`.
+
+        Parameters
+        ----------
+        normalize : int, default=0
+            Normalization setting. If 1, normalization R and T
+            by the normalization factor.
+        byorder : int, default=0
+            TODO
+
+        Returns
+        -------
+        numpy.ndarray
+            Reflection power.
+        numpy.ndarray
+            Transmission power.
         """
         aN, b0 = SolveExterior(
             self.a0,
@@ -287,9 +500,22 @@ class obj:
             T = T * self.normalization
         return R, T
 
-    def GetAmplitudes_noTranslate(self, which_layer):
+    def GetAmplitudes_noTranslate(self, which_layer: int):  # TODO: Add return types
         """
-        returns fourier amplitude
+        Return Fourier amplitude.
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+
+        Returns
+        -------
+        TODO
+
+        See Also
+        --------
+        GetAmplitudes : Return Fourier amplitude, translated based on some `z_offset`.
         """
         if which_layer == 0:
             aN, b0 = SolveExterior(
@@ -327,9 +553,26 @@ class obj:
             )
         return ai, bi
 
-    def GetAmplitudes(self, which_layer, z_offset):
+    def GetAmplitudes(
+        self, which_layer: int, z_offset: float
+    ):  # TODO: Add return types
         """
-        returns fourier amplitude
+        Return Fourier amplitude, translated based on some `z_offset`.
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+        z_offset : float
+            Z-axis offset for which calculated values will be translated.
+
+        Returns
+        -------
+        TODO
+
+        See Also
+        --------
+        GetAmplitudes_noTranslate : Return Fourier amplitude.
         """
         if which_layer == 0:
             aN, b0 = SolveExterior(
@@ -372,9 +615,22 @@ class obj:
 
         return ai, bi
 
-    def Solve_FieldFourier(self, which_layer, z_offset):
+    def Solve_FieldFourier(
+        self, which_layer: int, z_offset: float
+    ):  # TODO: Add return types
         """
-        returns field amplitude in fourier space: [ex,ey,ez], [hx,hy,hz]
+        Return field amplitude in Fourier space: [ex,ey,ez], [hx,hy,hz].
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+        z_offset : float
+            Z-axis offset for which calculated values will be translated.
+
+        Returns
+        -------
+        TODO
         """
         ai0, bi0 = self.GetAmplitudes_noTranslate(which_layer)
         # ai, bi = self.GetAmplitudes(which_layer,z_offset)
@@ -419,7 +675,30 @@ class obj:
             eh.append([[fex, fey, fez], [fhx, fhy, fhz]])
         return eh
 
-    def Solve_FieldOnGrid(self, which_layer, z_offset, Nxy=None):
+    def Solve_FieldOnGrid(
+        self, which_layer: int, z_offset: float, Nxy: list = None
+    ):  # TODO: Add return types
+        """
+        TODO
+
+        Parameters
+        ----------
+        which_layer : int
+            Layer for which calculation will be performed.
+        z_offset : float or list
+            Z-axis offset for which calculated values will be translated.
+            If single value, output will be `[[ex,ey,ez], [hx,hy,hz]]`. If
+            list, output will be `[[[ex1,ey1,ez1], [hx1,hy1,hz1]], [[ex2,ey2,ez2],
+            [hx2,hy2,hz2]],...]`.
+        Nxy : list, default=None
+            List of length 2, `[Nx, Ny]`, representing the number of evaluation
+            points in the x and y axes respectively. If `None`, the number of
+            points in layer `which_layer` will be used.
+
+        Returns
+        -------
+        TODO
+        """
         # Nxy = [Nx,Ny], if not supplied, will use the number in patterned layer
         # if single z_offset:  output [[ex,ey,ez],[hx,hy,hz]]
         # if z_offset is list: output [[[ex1,ey1,ez1],[hx1,hy1,hz1]],  [[ex2,ey2,ez2],[hx2,hy2,hz2]] ...]
